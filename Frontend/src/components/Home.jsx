@@ -6,6 +6,9 @@ const Home = () => {
   const [movies, setMovies] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const navigate = useNavigate();
+  const [userScore, setUserScore] = useState(0);
+
+
 
 
   useEffect(() => {
@@ -27,6 +30,31 @@ const Home = () => {
       document.body.style.overflow = "auto";
     }
   }, [selectedMovie]);
+   const handleRating = async (movieId, score) => {
+  setUserScore(score);
+  const token = localStorage.getItem("token");
+
+  try {
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/rate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ movieId, score })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("❌ Puan gönderme hatası:", data.error);
+    } else {
+      console.log("✅ Puan kaydedildi:", data);
+    }
+  } catch (err) {
+    console.error("❌ Sunucu hatası:", err);
+  }
+};
+
 
   return (
     <div style={{ padding: "2rem", minHeight: "100vh", overflowY: "auto" }}>
@@ -79,6 +107,32 @@ const Home = () => {
             <p><strong>Korku:</strong> {selectedMovie.horror}</p>
             <p><strong>Gerilim:</strong> {selectedMovie.thriller}</p>
             <p><strong>Sci-Fi:</strong> {selectedMovie.sciFi}</p>
+            <p><strong>Senin Puanın:</strong></p>
+<div style={{ fontSize: "1.5rem" }}>
+  {[...Array(10)].map((_, i) => (
+    <span
+      key={i}
+      style={{
+        cursor: "pointer",
+        color: i < userScore ? "#ffc107" : "#ccc"
+      }}
+      onClick={() => handleRating(selectedMovie._id, i + 1)}
+    >
+      ★
+    </span>
+  ))}
+</div>
+
+<select
+  value={userScore}
+  onChange={(e) => handleRating(selectedMovie._id, parseInt(e.target.value))}
+>
+  <option value="">Seçiniz</option>
+  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+    <option key={n} value={n}>{n}</option>
+  ))}
+</select>
+
             <button
               onClick={() => setSelectedMovie(null)}
               style={{

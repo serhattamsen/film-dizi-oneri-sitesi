@@ -4,6 +4,23 @@ const jwt = require("jsonwebtoken");
 const router = express.Router();
 const User = require("../models/User");
 
+
+// 🛡️ Token doğrulama middleware'i
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "Token gerekli" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+    next();
+  } catch (err) {
+    console.error("Token doğrulama hatası:", err);
+    res.status(403).json({ error: "Geçersiz token" });
+  }
+};
+
+
 // ✅ Kayıt ol
 router.post("/register", async (req, res) => {
   const { username, password } = req.body;
@@ -54,6 +71,35 @@ router.get("/me", async (req, res) => {
   } catch (err) {
     console.error("Token çözümleme hatası:", err);
     res.status(401).json({ error: "Geçersiz token" });
+  }
+});
+
+
+// 🎯 Kullanıcının filme puan vermesi
+router.post("/rate", verifyToken, async (req, res) => {
+  const { movieId, score } = req.body;
+
+  if (!movieId || typeof score !== "number") {
+    return res.status(400).json({ error: "Eksik veri" });
+  }
+
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+
+    // Aynı film için puan varsa güncelle, yoksa ekle
+    const existing = user.ratings.find(r => r.movieId === movieId);
+    if (existing) {
+      existing.score = score;
+    } else {
+      user.ratings.push({ movieId, score });
+    }
+
+    await user.save();
+    res.json({ message: "Puan kaydedildi", ratings: user.ratings });
+  } catch (err) {
+    console.error("Puan hatası:", err);
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
